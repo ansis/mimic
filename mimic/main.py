@@ -44,7 +44,7 @@ def add(args):
 
 def rm(args):
     """Stop a particular transfer"""
-    daemon.del_watch(args.source)
+    daemon.rm_watch(args.source)
     print "Watch directory removed"
 
 

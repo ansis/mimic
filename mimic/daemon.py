@@ -118,7 +118,7 @@ class mimic(Pyro.core.ObjBase):
             ## raise MimicError("Unable to connect to %s" % dest)
 
     def add_watch(self, path, dest, rec=True, auto_add=True, 
-        exclude=None, maintain_conn=True, delete=False):
+        exclude=[], maintain_conn=True, delete=False):
         """Start syncing a new directory.
 
         Args:
@@ -169,7 +169,7 @@ class mimic(Pyro.core.ObjBase):
             ret += "%s syncing to%s\n" % (repr(watch), repr(notifier.destination))
         return ret
 
-    def del_watch(self, watch):
+    def rm_watch(self, watch):
         """Stop the notifier with the given path"""
         if watch not in self._notifiers:
             raise MimicError("No such watch directory: %s" % watch)
@@ -178,6 +178,7 @@ class mimic(Pyro.core.ObjBase):
     
     def shutdown(self):
         """Shut down the daemon"""
+        os.remove('/tmp/mimic_daemon')
         for address, p in self._connections.iteritems():
             if not p.returncode:
                 p.terminate()
@@ -203,28 +204,31 @@ def start(fork=True):
     uri = daemon.connect(mimic(daemon=daemon), "mimic")
     with open('/tmp/mimic_daemon', 'w') as f:
         f.write(str(uri))
-
     if fork:
         pid = os.fork()
         if pid:
-            return daemon
+            return uri
 
     try:
         daemon.requestLoop()
     except KeyboardInterrupt:
         daemon.shutdown()
-    sys.exit(0)
+    os._exit(os.EX_OK)
 
 
 def get():
     """Try to return a running Mimic daemon"""
-    with open("/tmp/mimic_daemon") as f:
-        uri = f.read()
+    try:
+        with open("/tmp/mimic_daemon") as f:
+            uri = f.read()
+    except IOError:
+        raise MimicError("Mimic not running, please start.")
+
     daemon = Pyro.core.getProxyForURI(uri)
 
     try:
         daemon.test_connection()
     except Pyro.errors.ProtocolError:
-        raise MimicError("Mimic not running, please start.");
+        raise MimicError("Mimic not running, please start.")
 
     return daemon
