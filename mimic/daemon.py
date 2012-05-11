@@ -12,8 +12,12 @@ import time
 import pyinotify
 import Pyro.core
 
-import pynotify
+#import pynotify
 
+
+##########
+# Daemon #
+##########
 
 class EventHandler(pyinotify.ProcessEvent):
     """Handles pyinotify events. One method per event type."""
@@ -153,6 +157,7 @@ class mimic(Pyro.core.ObjBase):
     
     def list_watches(self):
         """Returns a string listing all currently active watches"""
+        # TODO return list, let client handle appearance
         ret = "### Currently active watches ###\n"
         for watch, notifier in self._notifiers.iteritems():
             ret += "%s syncing to%s\n" % (repr(watch), repr(notifier.destination))
@@ -161,8 +166,9 @@ class mimic(Pyro.core.ObjBase):
     def del_watch(self, watch):
         """Stop the notifier with the given path"""
         if watch not in self._notifiers:
-            raise MimicError("No such watch directory: %s", watch)
+            raise MimicError("No such watch directory: %s" % watch)
         self._notifiers[watch].stop()
+        del self._notifiers[watch]
     
     def shutdown(self):
         """Shut down the daemon"""
@@ -172,11 +178,20 @@ class mimic(Pyro.core.ObjBase):
         self.daemon.shutdown()
 
 
+##############
+# Exceptions #
+##############
+
 class MimicError(Exception):
     pass
 
 
-def start_server(fork=True):
+###########################
+# Start and access daemon #
+###########################
+
+def start(fork=True):
+    """Start the Mimic daemon."""
     Pyro.core.initServer()
     daemon = Pyro.core.Daemon(host='127.0.0.1')
     uri = daemon.connect(mimic(daemon=daemon), "mimic")
@@ -192,3 +207,18 @@ def start_server(fork=True):
         daemon.requestLoop()
     except KeyboardInterrupt:
         notifier.stop()
+    sys.exit(0)
+
+
+def get():
+    """Try to return a running Mimic daemon"""
+    with open("/tmp/mimic_daemon") as f:
+        uri = f.read()
+    daemon = Pyro.core.getProxyForURI(uri)
+
+    try:
+        daemon.test_connection()
+    except Pyro.errors.ProtocolError:
+        raise MimicError("Mimic not running, please start.");
+
+    return daemon
