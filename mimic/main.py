@@ -28,6 +28,9 @@ def add(args):
     source = os.path.abspath(args.source)
     destination = os.path.abspath(args.destination)
 
+    if not args.exclude:
+        args.exclude = ['.*.swp', '.*.swpx']
+
     daemon.add_watch(
         source,
         destination, 
@@ -75,7 +78,7 @@ def main():
     parser_list.set_defaults(func=list_watches)
 
     parser_start = subparsers.add_parser('start', help="Start the daemon")
-    parser_start.add_argument('--no-fork', help="Don't fork")
+    parser_start.add_argument('--no-fork', action='store_true', default=False, help="Don't fork")
     parser_start.set_defaults(func=start_daemon)
 
     parser_stop = subparsers.add_parser('stop', help="Stop the daemon")

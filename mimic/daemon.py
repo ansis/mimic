@@ -4,6 +4,7 @@ Mimic daemon. Monitors files for changes and syncs them to the
 appropriate destination.
 """
 
+import fnmatch
 import os
 import subprocess
 import sys
@@ -22,10 +23,13 @@ import Pyro.core
 class EventHandler(pyinotify.ProcessEvent):
     """Handles pyinotify events. One method per event type."""
     needs_rsync = True  # Whether syncing is necessary
+    exclude = None
 
     def process_event(self, filename):
-        if filename.split('.')[-1] not in ('swp', 'swpx'):
-            self.needs_rsync = True
+        for pattern in self.exclude:
+            if fnmatch.fnmatch(os.path.basename(filename), pattern):
+                return
+        self.needs_rsync = True
 
     def process_IN_CREATE(self, event):
         self.process_event(event.pathname)
@@ -134,9 +138,9 @@ class mimic(Pyro.core.ObjBase):
         if path in self._notifiers:
             raise MimicError("Directory already being watched.")
 
-        # TODO implement exlude
         wm = pyinotify.WatchManager()
         eh = EventHandler()
+        eh.exclude = exclude
         mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE | pyinotify.IN_MODIFY
 
         if maintain_conn:
@@ -146,8 +150,10 @@ class mimic(Pyro.core.ObjBase):
         cmd = ['/usr/bin/rsync']  #TODO let user specify path to rsync
         if delete:
             cmd.append('--delete')
+        for pattern in exclude:
+            cmd.append('--exclude=%s' % pattern)
         cmd.append('-avhzS' if rec else '-vhzS')
-        cmd.extend([path, dest])
+        cmd.extend(['-q', path, dest])
 
         self._notifiers[path] = GroupingThreadedNotifier(wm, eh, dest=dest, 
             rsync_command=cmd)
@@ -206,7 +212,7 @@ def start(fork=True):
     try:
         daemon.requestLoop()
     except KeyboardInterrupt:
-        notifier.stop()
+        daemon.shutdown()
     sys.exit(0)
 
 
