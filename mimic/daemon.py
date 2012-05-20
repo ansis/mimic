@@ -118,7 +118,7 @@ class mimic(Pyro.core.ObjBase):
             ## raise MimicError("Unable to connect to %s" % dest)
 
     def add_watch(self, path, dest, rec=True, auto_add=True, 
-        exclude=[], maintain_conn=True, delete=False):
+        exclude=None, maintain_conn=True, delete=False):
         """Start syncing a new directory.
 
         Args:
@@ -131,6 +131,9 @@ class mimic(Pyro.core.ObjBase):
                 to reduce transfer times.
             delete (Bool): Delete extraneous files from remote dirs.
         """
+
+        if exclude is None:
+            exclude = []
         
         ## Validate input
         if not os.path.exists(path):
