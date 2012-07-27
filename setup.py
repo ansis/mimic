@@ -10,8 +10,8 @@ setup(
     author='Ansis Brammanis',
     author_email='ansis.brammanis@gmail.com',
     license='BSD',
-    url='https://github.com/aibram/mimic',
-    download_url='https://github.com/aibram/mimic/tarball/master',
+    url='https://github.com/ansis/mimic',
+    download_url='https://github.com/ansis/mimic/tarball/master',
     packages=['mimic'],
     install_requires=(
         'pyinotify',
